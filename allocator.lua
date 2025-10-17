@@ -25,10 +25,9 @@ function alloc.order(pages)
 
 	return {
 		type = "order",
+		actual = size,
 		start = consec[1],
-		["end"] = consec[#consec] + 0x1000,
-		pages = blockCount,
-		size = size
+		pages = blockCount
 	}
 end
 
