@@ -86,6 +86,63 @@ function log.warn(msg, save)   log.log("[WARN] " .. msg, save) end
 function log.error(msg, save)  log.log("[ERROR] " .. msg, save) end
 
 ------------------------------------------------------------
+-- API: auto-wrap & replace functions to log inputs + outputs
+-- Example:
+--   log.g(gg)  --> wraps every function in gg
+--   log.g({myFunc = someFunc})
+--   log.g(myFunc)
+------------------------------------------------------------
+function log.wrap(target)
+    local function safeToString(v)
+        local ok, s = pcall(function() return tostring(v) end)
+        return ok and s or "<unprintable>"
+    end
+
+    local function wrap(fn, name)
+        if type(fn) ~= "function" then return fn end
+
+        return function(...)
+            -- collect args
+            local args = {...}
+            local argStrs = {}
+            for i, v in ipairs(args) do
+                table.insert(argStrs, safeToString(v))
+            end
+
+            local argList = table.concat(argStrs, ", ")
+            log.log(string.format("[FUNC:%s] called with (%s)", name or "unknown", argList))
+
+            -- call function safely
+            local results = {fn(...)}
+            local resStrs = {}
+            for i, v in ipairs(results) do
+                table.insert(resStrs, safeToString(v))
+            end
+
+            log.log(string.format("[FUNC:%s] returned (%s)", name or "unknown", table.concat(resStrs, ", ")))
+
+            return table.unpack(results)
+        end
+    end
+
+    if type(target) == "table" then
+        -- wrap all functions in table (like gg)
+        for k, v in pairs(target) do
+            if type(v) == "function" then
+                target[k] = wrap(v, tostring(k))
+            end
+        end
+        return target
+
+    elseif type(target) == "function" then
+        return wrap(target, "anonymous")
+
+    else
+        log.error("log.wrap() expects a function or table")
+    end
+end
+
+------------------------------------------------------------
 -- Example Usage
 ------------------------------------------------------------
 --[[
